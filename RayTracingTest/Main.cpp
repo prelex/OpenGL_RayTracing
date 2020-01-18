@@ -8,6 +8,7 @@
 #include <glm/gtc/type_ptr.hpp>
 #include "Camera.h"
 #include "Triangle.h"
+#include "Ray.h"
 
 void processInput(GLFWwindow* window);
 
@@ -62,8 +63,13 @@ int main()
 
 	glViewport(0, 0, 800, 600);
 
+	Ray ray(glm::vec3(0.0f, 0.0f, 5.0f), glm::vec3(0.0f, 0.04f, -1.0f));
+	Triangle triangle = { glm::vec3(-1.0f, -1.0f, 0.0f), glm::vec3(1.0f, -1.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f) };
+
 	Shader triangleShader("shaders/triangle_vs.txt", "shaders/triangle_fs.txt");
-	Triangle triangle(triangleShader);
+
+	if (ray.hitsTriangle(triangle))
+		std::cout << "hit triangle" << std::endl;
 
 	// render loop
 	while (!glfwWindowShouldClose(window))
@@ -85,8 +91,6 @@ int main()
 		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		triangle.Draw(glm::vec3(0.0f, 1.0f, 2.0f), glm::vec3(2.0f, 2.0f, 1.0f), glm::vec3(0.0f, 0.0f, 1.0f), 45.0f);
-
 		// swap buffers and poll events
 		glfwSwapBuffers(window);
 		glfwPollEvents();
@@ -94,7 +98,7 @@ int main()
 
 	glfwTerminate();
 	return 0;
-}//
+}
 
 void processInput(GLFWwindow* window)
 {
