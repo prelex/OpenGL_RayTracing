@@ -7,7 +7,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include "Camera.h"
-#include "Model.h"
+#include "Triangle.h"
 
 void processInput(GLFWwindow* window);
 
@@ -62,18 +62,30 @@ int main()
 
 	glViewport(0, 0, 800, 600);
 
+	Shader triangleShader("shaders/triangle_vs.txt", "shaders/triangle_fs.txt");
+	Triangle triangle(triangleShader);
+
 	// render loop
 	while (!glfwWindowShouldClose(window))
 	{
+		glm::mat4 view = camera.getViewMatrix();
+		glm::mat4 projection = glm::perspective(camera.Zoom, static_cast<float>(SCREEN_WIDTH) / static_cast<float>(SCREEN_HEIGHT), 0.1f, 100.0f);
+
 		float currentFrame = static_cast<float>(glfwGetTime());
 		deltaTime = currentFrame - lastFrame;
 		lastFrame = currentFrame;
+
+		triangleShader.use();
+		triangleShader.setMat4("view", view);
+		triangleShader.setMat4("projection", projection);
 
 		processInput(window);
 
 		// clear the color buffer and depth buffer
 		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		triangle.Draw(glm::vec3(0.0f, 1.0f, 2.0f), glm::vec3(2.0f, 2.0f, 1.0f), glm::vec3(0.0f, 0.0f, 1.0f), 45.0f);
 
 		// swap buffers and poll events
 		glfwSwapBuffers(window);
@@ -82,7 +94,7 @@ int main()
 
 	glfwTerminate();
 	return 0;
-}
+}//
 
 void processInput(GLFWwindow* window)
 {
