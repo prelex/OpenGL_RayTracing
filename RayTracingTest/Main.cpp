@@ -15,9 +15,6 @@ void processInput(GLFWwindow* window);
 // Callback functions. Called whenever the user changes the window size, uses the mouse, or uses the scroll wheel
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
-void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
-
-unsigned int loadTexture( const char* name);
 
 const unsigned int SCREEN_WIDTH = 800, SCREEN_HEIGHT = 600;
 
@@ -52,7 +49,6 @@ int main()
 	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 	glfwSetCursorPosCallback(window, mouse_callback);
-	glfwSetScrollCallback(window, scroll_callback);
 
 	// glad: load all OpenGL function pointers
 	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
@@ -63,13 +59,10 @@ int main()
 
 	glViewport(0, 0, 800, 600);
 
-	Ray ray(glm::vec3(0.0f, 0.0f, 5.0f), glm::vec3(0.0f, 0.04f, -1.0f));
-	Triangle triangle = { glm::vec3(-1.0f, -1.0f, 0.0f), glm::vec3(1.0f, -1.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f) };
-
 	Shader triangleShader("shaders/triangle_vs.txt", "shaders/triangle_fs.txt");
+	Shader rayShader("shaders/ray_vs.txt", "shaders/ray_fs.txt");
 
-	if (ray.hitsTriangle(triangle))
-		std::cout << "hit triangle" << std::endl;
+	TriangleRenderer triangle(triangleShader);
 
 	// render loop
 	while (!glfwWindowShouldClose(window))
@@ -77,13 +70,18 @@ int main()
 		glm::mat4 view = camera.getViewMatrix();
 		glm::mat4 projection = glm::perspective(camera.Zoom, static_cast<float>(SCREEN_WIDTH) / static_cast<float>(SCREEN_HEIGHT), 0.1f, 100.0f);
 
-		float currentFrame = static_cast<float>(glfwGetTime());
-		deltaTime = currentFrame - lastFrame;
-		lastFrame = currentFrame;
-
 		triangleShader.use();
 		triangleShader.setMat4("view", view);
 		triangleShader.setMat4("projection", projection);
+		rayShader.use();
+		rayShader.setMat4("view", view);
+		rayShader.setMat4("projection", projection);
+
+		Ray ray(camera.Position, camera.Front, rayShader);
+
+		float currentFrame = glfwGetTime();
+		deltaTime = currentFrame - lastFrame;
+		lastFrame = currentFrame;
 
 		processInput(window);
 
@@ -91,6 +89,10 @@ int main()
 		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+		// render
+		triangle.Render(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec2(3.0f), glm::vec3(0.0f, 1.0f, 0.0f), 0.0f, &ray);
+		ray.Render();
+		
 		// swap buffers and poll events
 		glfwSwapBuffers(window);
 		glfwPollEvents();
@@ -103,9 +105,7 @@ int main()
 void processInput(GLFWwindow* window)
 {
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-	{
 		glfwSetWindowShouldClose(window, true);
-	}
 	float cameraSpeed = 2.5f * deltaTime;
 	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
 		camera.ProcessKeyboard(FORWARD, deltaTime);
@@ -126,50 +126,15 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos)
 {
 	if (firstMouse)
 	{
-		lastX = (float)xpos;
-		lastY = (float)ypos;
+		lastX = static_cast<float>(xpos);
+		lastY = static_cast<float>(ypos);
 		firstMouse = false;
 	}
 
-	float xoffset = (float)xpos - lastX;
-	float yoffset = lastY - (float)ypos;
-	lastX = (float)xpos;
-	lastY = (float)ypos;
+	float xoffset = static_cast<float>(xpos) - lastX;
+	float yoffset = lastY - static_cast<float>(ypos);
+	lastX = static_cast<float>(xpos);
+	lastY = static_cast<float>(ypos);
 
 	camera.ProcessMouseMovement(xoffset, yoffset);
-}
-
-void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
-{
-	camera.ProcessMouseScroll((float)yoffset);
-}
-
-unsigned int loadTexture( const char* name)
-{
-	unsigned int id;
-	glGenTextures(1, &id);
-	glBindTexture(GL_TEXTURE_2D, id);
-
-	// set the texture filtering options
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-	// load and generate texture
-	int width, height, nrChannels;
-	stbi_set_flip_vertically_on_load(true);
-	unsigned char *data = stbi_load(name, &width, &height, &nrChannels, 0);
-	if (data)
-	{
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-		glGenerateMipmap(GL_TEXTURE_2D);
-	}
-	else
-	{
-		std::cout << "Failed to load texture" << std::endl;
-	}
-	stbi_image_free(data);
-
-	return id;
 }
